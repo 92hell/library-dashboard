@@ -3,7 +3,7 @@ import { Button, ButtonGroup, Container, Table, Input, FormGroup, Label } from '
 import AppNavbar from '../fragments/AppNavbar';
 import { Link } from 'react-router-dom';
 
-class AuthorList extends Component {
+class BookList extends Component {
 
     searchTimeout = null;
     searchInputRef = React.createRef();
@@ -11,20 +11,20 @@ class AuthorList extends Component {
     constructor(props) {
         super(props);
         this.state = {
-            authors: [],
+            books: [],
             isLoading: true,
             searchTerm: ''
         };
         this.remove = this.remove.bind(this);
-        this.fetchAuthors = this.fetchAuthors.bind(this);
+        this.fetchBooks = this.fetchBooks.bind(this);
         this.handleSearchChange = this.handleSearchChange.bind(this);
         this.handleKeyPress = this.handleKeyPress.bind(this);
     }
 
     componentDidMount() {
-        this.fetchAuthors(this.state.searchTerm);
+        this.fetchBooks(this.state.searchTerm);
         if (this.searchInputRef.current) {
-            this.searchInputRef.current.focus();
+            this.searchInputRef.focus();
         }
     }
 
@@ -34,10 +34,10 @@ class AuthorList extends Component {
         }
     }
 
-    async fetchAuthors(searchName = '') {
+    async fetchBooks(searchName = '') {
         this.setState({ isLoading: true });
 
-        const url = `/authors` + (searchName ? `?name=${encodeURIComponent(searchName)}` : '');
+        const url = `/books` + (searchName ? `?searchTerm=${encodeURIComponent(searchName)}` : '');
 
         try {
             const response = await fetch(url);
@@ -45,17 +45,15 @@ class AuthorList extends Component {
                 throw new Error(`HTTP error! status: ${response.status}`);
             }
             const data = await response.json();
-            this.setState({ authors: data, isLoading: false });
-
+            this.setState({ books: data, isLoading: false });
             if (this.searchInputRef.current) {
-                this.searchInputRef.current.focus();
+                this.searchInputRef.focus();
             }
-
         } catch (error) {
-            console.error("Error fetching authors:", error);
+            console.error("Error fetching books:", error);
             this.setState({ isLoading: false });
             if (this.searchInputRef.current) {
-                this.searchInputRef.current.focus();
+                this.searchInputRef.focus();
             }
         }
     }
@@ -69,8 +67,8 @@ class AuthorList extends Component {
         }
 
         this.searchTimeout = setTimeout(() => {
-            this.fetchAuthors(newSearchTerm);
-        }, 1000);
+            this.fetchBooks(newSearchTerm);
+        }, 300);
     }
 
     handleKeyPress(event) {
@@ -79,74 +77,80 @@ class AuthorList extends Component {
             if (this.searchTimeout) {
                 clearTimeout(this.searchTimeout);
             }
-            this.fetchAuthors(this.state.searchTerm);
+            this.fetchBooks(this.state.searchTerm);
             if (this.searchInputRef.current) {
-                this.searchInputRef.current.focus();
+                this.searchInputRef.focus();
             }
         }
     }
 
     async remove(id) {
         try {
-            await fetch(`/authors/${id}`, {
+            await fetch(`/books/${id}`, {
                 method: 'DELETE',
                 headers: {
                     'Accept': 'application/json',
                     'Content-Type': 'application/json'
                 }
             });
-            let updatedAuthors = [...this.state.authors].filter(i => i.id !== id);
-            this.setState({ authors: updatedAuthors });
+
+            this.fetchBooks(this.state.searchTerm);
             if (this.searchInputRef.current) {
-                this.searchInputRef.current.focus();
+                this.searchInputRef.focus();
             }
         } catch (error) {
-            console.error("Error deleting author:", error);
+            console.error("Error deleting book:", error);
             if (this.searchInputRef.current) {
-                this.searchInputRef.current.focus();
+                this.searchInputRef.focus();
             }
         }
     }
 
     render() {
-        const { authors, isLoading, searchTerm } = this.state;
+        const { books, isLoading, searchTerm } = this.state;
 
-        if (isLoading) {
+        if (isLoading && books.length === 0) {
             return (
                 <div>
                     <AppNavbar />
                     <Container fluid className="text-center py-5">
-                        <p className="display-4">Loading Authors...</p>
-                        [Image of a loading spinner]
+                        <p className="display-4">Loading Books...</p>
                     </Container>
                 </div>
             );
         }
 
-        const authorList = authors.map(author => {
-            let formattedDateOfBirth = 'N/A';
-            if (author.dateOfBirth) {
+        const bookList = books.map(book => {
+            let formattedPublishedDate = 'N/A';
+            if (book.publishedDate) {
                 try {
-                    const dateObject = new Date(author.dateOfBirth);
-                    formattedDateOfBirth = dateObject.toLocaleDateString(undefined, {
+                    const dateObject = new Date(book.publishedDate);
+                    formattedPublishedDate = dateObject.toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'long',
                         day: 'numeric'
                     });
                 } catch (e) {
-                    console.error("Error parsing dateOfBirth:", author.dateOfBirth, e);
-                    formattedDateOfBirth = 'Invalid Date';
+                    console.error("Error parsing publishedDate:", book.publishedDate, e);
+                    formattedPublishedDate = 'Invalid Date';
                 }
             }
 
+            const displayCategories = Array.isArray(book.categories)
+                ? book.categories.join(', ')
+                : 'N/A';
+
             return (
-                <tr key={author.id}>
-                    <td style={{ whiteSpace: 'nowrap' }}>{author.name}</td>
-                    <td>{formattedDateOfBirth}</td>
+                <tr key={book.id}>
+                    <td style={{ whiteSpace: 'nowrap' }}>{book.title}</td>
+                    <td>{book.author ? book.author.name : 'N/A'}</td>
+                    <td>{formattedPublishedDate}</td>
+                    <td>{book.publisherName}</td>
+                    <td>{displayCategories}</td>
                     <td>
                         <ButtonGroup>
-                            <Button size="sm" color="primary" tag={Link} to={"/authors/" + author.id}>Edit</Button>
-                            <Button size="sm" color="danger" onClick={() => this.remove(author.id)}>Delete</Button>
+                            <Button size="sm" color="primary" tag={Link} to={"/books/" + book.id}>Edit</Button>
+                            <Button size="sm" color="danger" onClick={() => this.remove(book.id)}>Delete</Button>
                         </ButtonGroup>
                     </td>
                 </tr>
@@ -158,18 +162,18 @@ class AuthorList extends Component {
                 <AppNavbar/>
                 <Container fluid className="mt-4">
                     <div className="d-flex justify-content-between align-items-center mb-4">
-                        <h3 className="mb-0">Authors</h3>
-                        <Button color="success" tag={Link} to="/authors/new">Add Author</Button>
+                        <h3 className="mb-0">Books</h3>
+                        <Button color="success" tag={Link} to="/books/new">Add Book</Button>
                     </div>
 
                     {/* Search Bar */}
                     <FormGroup className="mb-4">
-                        <Label for="searchName">Search by Name:</Label>
+                        <Label for="searchTerm">Search by Title, Publisher, Category, or Author:</Label>
                         <Input
                             type="text"
-                            name="searchName"
-                            id="searchName"
-                            placeholder="Type to search authors..."
+                            name="searchTerm"
+                            id="searchTerm"
+                            placeholder="Type to search books..."
                             value={searchTerm}
                             onChange={this.handleSearchChange}
                             onKeyPress={this.handleKeyPress}
@@ -178,19 +182,22 @@ class AuthorList extends Component {
                         />
                     </FormGroup>
 
-                    {authors.length === 0 && !isLoading ? (
-                        <p className="text-muted text-center">No authors found matching your criteria. Click "Add Author" to get started!</p>
+                    {books.length === 0 && !isLoading ? (
+                        <p className="text-muted text-center">No books found matching your criteria. Click "Add Book" to get started!</p>
                     ) : (
                         <Table responsive hover striped className="shadow-sm">
                             <thead className="bg-dark text-white">
                             <tr>
-                                <th width="30%">Name</th>
-                                <th width="30%">Date of Birth</th>
-                                <th width="40%">Actions</th>
+                                <th width="20%">Title</th>
+                                <th width="15%">Author</th>
+                                <th width="15%">Published Date</th>
+                                <th width="20%">Publisher</th>
+                                <th width="15%">Categories</th>
+                                <th width="15%">Actions</th>
                             </tr>
                             </thead>
                             <tbody>
-                            {authorList}
+                            {bookList}
                             </tbody>
                         </Table>
                     )}
@@ -199,4 +206,4 @@ class AuthorList extends Component {
         );
     }
 }
-export default AuthorList;
+export default BookList;
